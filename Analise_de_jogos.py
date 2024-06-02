@@ -8,6 +8,9 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from datetime import datetime, timedelta
 import time
+from pywebio.input import input, select
+from pywebio.output import put_text, clear, put_table
+from pywebio import start_server
 
 # Lista de campeonatos e seus IDs
 championships = {
@@ -62,21 +65,13 @@ championships = {
     "Copa America": "4mn",
     "Copa do Brasil": "46r",
 }
-#funcção para escolher um campeonato
+
+# Função para escolher um campeonato
 def get_championship_choice():
-    print("Escolha um campeonato:")
-    for index, (name, champ_id) in enumerate(championships.items(), start=1):
-        print(f"{index}. {name}")
-
-    choice = int(input("Digite o número do campeonato escolhido: ")) - 1
-    if 0 <= choice < len(championships):
-        selected_championship = list(championships.items())[choice]
-        champ_name, champ_id = selected_championship
-        return champ_name, champ_id
-    else:
-        print("Opção inválida.")
-        return None, None
-
+    championship_names = list(championships.keys())
+    champ_name = select("Escolha um campeonato:", options=championship_names)
+    champ_id = championships[champ_name]
+    return champ_name, champ_id
 
 def main():
     # Configurar o serviço do ChromeDriver
@@ -90,11 +85,9 @@ def main():
     driver = webdriver.Chrome(service=service, options=chrome_options)
 
     while True:
+        clear()
         champ_name, champ_id = get_championship_choice()
-        if not champ_name:
-            continue
-
-        print(f"Você escolheu: {champ_name}")
+        put_text(f"Você escolheu: {champ_name}")
 
         # Abrir a URL do campeonato escolhido
         league_url = f"https://cornerprobet.com/pt/league/{champ_id}"
@@ -222,7 +215,7 @@ def main():
 
         # Mostrar os jogos de hoje com as posições e estatísticas de cantos e gols
         if games_today:
-            print("\nJogos de hoje:")
+            put_text("\nJogos de hoje:")
             for game in games_today:
                 game_time, team1, team2 = game
                 team1_position = team_positions.get(team1, 'N/A')
@@ -234,13 +227,8 @@ def main():
 
                 formatted_game = (f"{game_time}\n"
                                   f"{team1}({team1_position}) x {team2}({team2_position})")
-                                #   f"0-10 ({team1_corners['0-10 Favor'] * 100}%) x 0-10 ({team2_corners['0-10 Favor'] * 100}%)\n"
-                                #   f"⛳({team1_corners['Corners Favor']}) x Cantos favor({team2_corners['Corners Favor']})\n"
-                                #   f"⚽️ HT ({team1_goals['Over 0.5HT'] * 100}%) x 0.5HT ({team2_goals['Over 0.5HT'] * 100}%)\n"
-                                #   f"⚽️ ({team1_goals['Media Favor']}) x Media Favor ({team2_goals['Media Favor']})\n"
-                                #   f"⚽️ ({team1_goals['Media Contra']}) x Media Contra ({team2_goals['Media Contra']})")
 
-                print(formatted_game)
+                put_text(formatted_game)
 
                 # Lógica de sugestão de apostas
                 suggestions = []
@@ -261,17 +249,17 @@ def main():
                     suggestions.append("⚽️: Apostar em mais de 0,5 ou -3,5 gols")
 
                 for suggestion in suggestions:
-                    print(suggestion)
+                    put_text(suggestion)
         else:
-            print("\nNão há jogos para hoje.")
+            put_text("\nNão há jogos para hoje.")
 
         # Perguntar se o usuário deseja escolher outro campeonato
-        another_choice = input("Deseja escolher outro campeonato? (s/n): ")
-        if another_choice.lower() != 's':
+        another_choice = select("Deseja escolher outro campeonato?", options=["Sim", "Não"])
+        if another_choice == "Não":
             break
 
     # Fechar o navegador após a inspeção
     driver.quit()
 
 if __name__ == "__main__":
-    main()
+    start_server(main, port=8080, debug=True)
